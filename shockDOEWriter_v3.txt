@@ -1,0 +1,1502 @@
+classdef shockDOEWriter_v3 < matlab.apps.AppBase
+
+    % Properties that correspond to app components
+    properties (Access = public)
+        ShockDOERankUIFigure            matlab.ui.Figure
+        GridLayout                      matlab.ui.container.GridLayout
+        LeftPanel                       matlab.ui.container.Panel
+        issym                           matlab.ui.control.CheckBox
+        PasteDampersfromInputsButton    matlab.ui.control.Button
+        Label                           matlab.ui.control.Label
+        Alt3DampersLabel                matlab.ui.control.Label
+        EditField_16                    matlab.ui.control.EditField
+        EditField_15                    matlab.ui.control.EditField
+        EditField_14                    matlab.ui.control.EditField
+        EditField_13                    matlab.ui.control.EditField
+        Alt2DampersLabel                matlab.ui.control.Label
+        EditField_12                    matlab.ui.control.EditField
+        EditField_11                    matlab.ui.control.EditField
+        EditField_10                    matlab.ui.control.EditField
+        EditField_9                     matlab.ui.control.EditField
+        Alt1DampersLabel                matlab.ui.control.Label
+        EditField_8                     matlab.ui.control.EditField
+        EditField_7                     matlab.ui.control.EditField
+        EditField_6                     matlab.ui.control.EditField
+        EditField_5                     matlab.ui.control.EditField
+        BaselineDampersLabel            matlab.ui.control.Label
+        EditField_4                     matlab.ui.control.EditField
+        EditField_3                     matlab.ui.control.EditField
+        EditField_2                     matlab.ui.control.EditField
+        EditField                       matlab.ui.control.EditField
+        GenerateButton                  matlab.ui.control.Button
+        ClickDeltaEditField             matlab.ui.control.NumericEditField
+        ClickDeltaEditFieldLabel        matlab.ui.control.Label
+        SaveDOEBatchButton              matlab.ui.control.Button
+        ofIterationsEditField           matlab.ui.control.NumericEditField
+        ofIterationsEditFieldLabel      matlab.ui.control.Label
+        PasteDampersfromSetupCompareButton  matlab.ui.control.Button
+        CenterPanel                     matlab.ui.container.Panel
+        DampersfromInputLabel           matlab.ui.control.Label
+        GeneratedClicksFirstfourarefrominputsLabel  matlab.ui.control.Label
+        UITable2                        matlab.ui.control.Table
+        UITable                         matlab.ui.control.Table
+        RightPanel                      matlab.ui.container.Panel
+        Image                           matlab.ui.control.Image
+        OpenFileCheckBox                matlab.ui.control.CheckBox
+        RankExportedtoEditField         matlab.ui.control.EditField
+        RankExportedtoEditFieldLabel    matlab.ui.control.Label
+        Lamp_2                          matlab.ui.control.Lamp
+        PerformRankButton               matlab.ui.control.Button
+        Lamp                            matlab.ui.control.Lamp
+        FilterPostDataButton            matlab.ui.control.Button
+        EditField_input_filterVar4_max  matlab.ui.control.NumericEditField
+        EditField_input_filterVar3_max  matlab.ui.control.NumericEditField
+        EditField_input_filterVar2_max  matlab.ui.control.NumericEditField
+        EditField_input_filterVar1_max  matlab.ui.control.NumericEditField
+        MaxRRBumpstopForceLabel         matlab.ui.control.Label
+        Max_4EditField                  matlab.ui.control.NumericEditField
+        Max_4EditFieldLabel             matlab.ui.control.Label
+        Min_4EditField                  matlab.ui.control.NumericEditField
+        Min_4EditFieldLabel             matlab.ui.control.Label
+        MaxLRBumpstopForceLabel         matlab.ui.control.Label
+        Max_3EditField                  matlab.ui.control.NumericEditField
+        Max_3EditFieldLabel             matlab.ui.control.Label
+        Min_3EditField                  matlab.ui.control.NumericEditField
+        Min_3EditFieldLabel             matlab.ui.control.Label
+        MaxRFBumpstopForceLabel         matlab.ui.control.Label
+        Max_2EditField                  matlab.ui.control.NumericEditField
+        Max_2EditFieldLabel             matlab.ui.control.Label
+        Min_2EditField                  matlab.ui.control.NumericEditField
+        Min_2EditFieldLabel             matlab.ui.control.Label
+        MaxLFBumpstopForceLabel         matlab.ui.control.Label
+        Max_1EditField                  matlab.ui.control.NumericEditField
+        Max_1EditFieldLabel             matlab.ui.control.Label
+        Min_1EditField                  matlab.ui.control.NumericEditField
+        Min_1EditFieldLabel             matlab.ui.control.Label
+        UITable3                        matlab.ui.control.Table
+        ProcessDOEButton                matlab.ui.control.Button
+        SelectDOEFileButton             matlab.ui.control.Button
+        PostDOELabel                    matlab.ui.control.Label
+    end
+
+    % Properties that correspond to apps with auto-reflow
+    properties (Access = private)
+        onePanelWidth = 576;
+        twoPanelWidth = 768;
+    end
+
+
+    properties (Access = public)
+        DamperInput % Stores input data for Damper IDs
+        numRand = 2500 % Number of random iterations needed
+        delta = 10 % click delta
+        Output % output from sim data
+        lf0_ID= ''; % blank placeholder for damper id
+        rf0_ID= '';
+        lr0_ID= '';
+        rr0_ID= '';
+        lf1_ID= '';
+        rf1_ID= '';
+        lr1_ID= '';
+        rr1_ID= '';
+        lf2_ID= '';
+        rf2_ID= '';
+        lr2_ID= '';
+        rr2_ID= '';
+        lf3_ID= '';
+        rf3_ID = '';
+        lr3_ID = ''
+        rr3_ID = '';
+        lastFolder = ''; % Store last used folder
+        filePath % Store selected file path
+        wipSorted % Store sorted  and combined data
+        vars % 
+        inputfiltervar1 % bumpstop var placeholders
+        inputfiltervar2
+        inputfiltervar3
+        inputfiltervar4
+        filterVarData1
+        filterVarData2
+        filterVarData3
+        filterVarData4
+        rawcoll
+        rawDamperIds
+        filterVar1
+        filterVar2
+        filterVar3
+        filterVar4
+        FilteredData = [];
+        pdata_withinRange
+        finalOutput
+        openFile
+        inputData %for rank
+        DOEPath
+        DOEfile
+    end
+
+    methods (Access = public)
+
+        function showNotification(app, message, duration)
+            % Create a small non-blocking UI figure
+            notifFig = uifigure('Position', [app.ShockDOERankUIFigure.Position(1) + 500, ...
+                app.ShockDOERankUIFigure.Position(2) + 350, 300, 100], ...
+                'Name', 'Notification', 'Resize', 'off', 'MenuBar', 'none', ...
+                'ToolBar', 'none', 'WindowStyle', 'normal');
+
+            % Create a label inside the UI figure
+            uilabel(notifFig, 'Text', message, 'Position', [20, 40, 260, 30], 'FontSize', 14, 'HorizontalAlignment', 'center');
+
+            % Use a timer to close it automatically
+            t = timer('StartDelay', duration, 'TimerFcn', @(~,~) close(notifFig));
+            start(t);
+        end
+
+    end
+
+    methods (Access = private)
+
+        function d = makeProgressBar(app, titleText)
+            d = uiprogressdlg(app.ShockDOERankUIFigure, ...
+                'Title', titleText, ...
+                'Message', sprintf('%s...', titleText), ...
+                'Indeterminate', 'off', ...
+                'Value', 0);
+
+        end
+
+        function newVal = check0(app,val)
+            if val < 1e-3
+                newVal = 0;
+            else
+                newVal = val;
+            end
+
+        end
+
+        function writeLog(logMessage) % not used currently (v3)
+            logFile = fullfile(tempdir, 'ShockDOE_log.txt');  % Or choose another path
+            fid = fopen(logFile, 'a');  % 'a' appends to the file if it exists
+            if fid ~= -1
+                timestamp = datestr(now, 'yyyy-mm-dd HH:MM:SS');
+                fprintf(fid, '[%s] %s\n', timestamp, logMessage);
+                fclose(fid);
+            else
+                warning('Could not open log file.');
+            end
+        end
+
+
+    end
+
+
+    % Callbacks that handle component events
+    methods (Access = private)
+
+        % Button pushed function: PasteDampersfromSetupCompareButton
+        function PasteDampersfromSetupCompareButtonPushed(app, event)
+            try
+                % Get the pasted content from clipboard
+                pastedText = clipboard('paste');
+
+                % Check if clipboard is empty
+                if isempty(pastedText)
+                    error("No Data from Clipboard");
+                end
+
+                % Split into rows
+                rows = splitlines(strtrim(pastedText));
+
+                % Remove empty rows
+                rows(cellfun(@isempty, rows)) = [];
+
+                % ensure data exist
+                if isempty(rows)
+                    error("No Data from Clipboard");
+                end
+
+                % Detect the delimiter
+                sampleRow = rows{1}; 
+                if contains(sampleRow, char(9))  % Tab character
+                    delimiter = char(9);
+                elseif contains(sampleRow, ',')  % Comma
+                    delimiter = ',';
+                elseif contains(sampleRow, ' ')  % Space
+                    delimiter = ' ';
+                else
+                    error("Unknown delimiter. Please check the copied data format.");
+                end
+
+                % split row into columns
+                dataArray = cellfun(@(x) split(x, delimiter)', rows, 'UniformOutput', false); 
+
+                % Convert into 4x4
+                input = cat(1, dataArray{:});
+                input = cell2table(input, 'VariableNames', {'Col1', 'Col2', 'Col3', 'Col4'});
+
+                % Assign to UI Table
+                app.UITable.Data = input;
+
+            catch ME  % Catch any errors
+                % Display an alert message to the user
+                showNotification(app, "Clipboard Error", 5); 
+                focus(app.ShockDOERankUIFigure)
+            end
+
+            app.DamperInput = input;
+        end
+
+        % Value changed function: ofIterationsEditField
+        function ofIterationsEditFieldValueChanged(app, event)
+            value = app.ofIterationsEditField.Value;
+            app.numRand = value;
+        end
+
+        % Value changed function: ClickDeltaEditField
+        function ClickDeltaEditFieldValueChanged(app, event)
+            app.delta = app.ClickDeltaEditField.Value;
+
+            if isempty(app.delta)
+                app.delta = 10;
+            end
+
+
+        end
+
+        % Button pushed function: GenerateButton
+        function GenerateButtonPushed(app, event)
+            allDampers = table2cell(app.DamperInput); 
+            [output, props0, props1, props2, props3] = randClicks(allDampers, app.delta, app.numRand, app.issym.Value);            
+
+            app.Output = output;
+
+            app.UITable2.Data = output(2:end,:);
+
+            flat_props0 = [props0{:}];
+            flat_props1 = [props1{:}];
+            flat_props2 = [props2{:}];
+            flat_props3 = [props3{:}];
+
+            corners = {'LF', 'RF', 'LR', 'RR'};
+            labels = {
+                'Damper Compression High Spd Valve'
+                'Damper Compression High Spd Spring'
+                'Damper Rebound High Spd Valve'
+                'Damper Rebound High Spd Spring'
+                'Damper Compression Blowoff Clicks'
+                };
+
+            headerLabels = [ ...
+                strcat(labels{1}, " ", corners{1}), ...
+                strcat(labels{2}, " ", corners{1}), ...
+                strcat(labels{3}, " ", corners{1}), ...
+                strcat(labels{4}, " ", corners{1}), ...
+                strcat(labels{5}, " ", corners{1}), ...
+                strcat(labels{1}, " ", corners{2}), ...
+                strcat(labels{2}, " ", corners{2}), ...
+                strcat(labels{3}, " ", corners{2}), ...
+                strcat(labels{4}, " ", corners{2}), ...
+                strcat(labels{5}, " ", corners{2}), ...
+                strcat(labels{1}, " ", corners{3}), ...
+                strcat(labels{2}, " ", corners{3}), ...
+                strcat(labels{3}, " ", corners{3}), ...
+                strcat(labels{4}, " ", corners{3}), ...
+                strcat(labels{5}, " ", corners{3}), ...
+                strcat(labels{1}, " ", corners{4}), ...
+                strcat(labels{2}, " ", corners{4}), ...
+                strcat(labels{3}, " ", corners{4}), ...
+                strcat(labels{4}, " ", corners{4}), ...
+                strcat(labels{5}, " ", corners{4}) ...
+                ];
+
+            headerLabels = cellstr(headerLabels);  % Convert to 1x20 cell array of character vectors if needed
+
+
+            collProps = [headerLabels;
+                flat_props0;
+                flat_props1;
+                flat_props2;
+                flat_props3
+                ];
+
+            n = size(output, 1);        % total desired number of rows
+            rows_needed = n - 5;        % subtract 1 header + 4 data rows
+
+            % Repeat flat_props0 (row 2 of collProps) as needed
+            filler_rows = repmat(flat_props0, rows_needed, 1);  % (n-5) x 20
+
+            % Append filler rows to collProps
+            new_collProps = [
+                collProps;
+                filler_rows
+                ];
+
+            % % Ensure 'output' is a cell array
+            % if ~iscell(output)
+            %     output = num2cell(output);
+            % end
+
+            % Concatenate horizontally
+            app.finalOutput = [output, new_collProps];
+
+
+        end
+
+        % Button pushed function: SaveDOEBatchButton
+        function SaveDOEBatchButtonPushed(app, event)
+            batch = [app.Output(1,:);app.Output(3:end,:)];
+            batch = [app.finalOutput(1,:);app.finalOutput(3:end,:)];
+
+            [filename, pathname] = uiputfile('*.csv', 'Save As');
+            if ischar(filename)
+                fullpath = fullfile(pathname, filename);
+                try
+                    writetable(cell2table(batch), fullpath, 'WriteVariableNames', false);
+                    %uiwait(msgbox("File Saved","Success","modal"));
+                    uialert(app.ShockDOERankUIFigure, "File Saved", "Success","Icon","success")
+                catch ME
+                    uialert(app.ShockDOERankUIFigure, sprintf('Failed to save file:\n%s', ME.message), 'Save Error');
+                end
+            end
+        end
+
+        % Value changed function: EditField
+        function EditFieldValueChanged(app, event)
+            app.lf0_ID = app.EditField.Value;
+
+        end
+
+        % Value changed function: EditField_2
+        function EditField_2ValueChanged(app, event)
+            app.rf0_ID = app.EditField_2.Value;
+
+        end
+
+        % Value changed function: EditField_3
+        function EditField_3ValueChanged(app, event)
+            app.lr0_ID = app.EditField_3.Value;
+
+        end
+
+        % Value changed function: EditField_4
+        function EditField_4ValueChanged(app, event)
+            app.rr0_ID = app.EditField_4.Value;
+
+        end
+
+        % Value changed function: EditField_5
+        function EditField_5ValueChanged(app, event)
+            app.lf1_ID = app.EditField_5.Value;
+
+        end
+
+        % Value changed function: EditField_6
+        function EditField_6ValueChanged(app, event)
+            app.rf1_ID = app.EditField_6.Value;
+
+        end
+
+        % Value changed function: EditField_7
+        function EditField_7ValueChanged(app, event)
+            app.lr1_ID = app.EditField_7.Value;
+
+        end
+
+        % Value changed function: EditField_8
+        function EditField_8ValueChanged(app, event)
+            app.rr1_ID = app.EditField_8.Value;
+
+        end
+
+        % Value changed function: EditField_9
+        function EditField_9ValueChanged(app, event)
+            app.lf2_ID = app.EditField_9.Value;
+
+        end
+
+        % Value changed function: EditField_10
+        function EditField_10ValueChanged(app, event)
+            app.rf2_ID = app.EditField_10.Value;
+
+        end
+
+        % Value changed function: EditField_11
+        function EditField_11ValueChanged(app, event)
+            app.lr2_ID = app.EditField_11.Value;
+
+        end
+
+        % Value changed function: EditField_12
+        function EditField_12ValueChanged(app, event)
+            app.rr2_ID = app.EditField_12.Value;
+
+        end
+
+        % Value changed function: EditField_13
+        function EditField_13ValueChanged(app, event)
+            app.lf3_ID = app.EditField_13.Value;
+
+        end
+
+        % Value changed function: EditField_14
+        function EditField_14ValueChanged(app, event)
+            app.rf3_ID = app.EditField_14.Value;
+
+        end
+
+        % Value changed function: EditField_15
+        function EditField_15ValueChanged(app, event)
+            app.lr3_ID = app.EditField_15.Value;
+
+        end
+
+        % Value changed function: EditField_16
+        function EditField_16ValueChanged(app, event)
+            app.rr3_ID = app.EditField_16.Value;
+
+        end
+
+        % Button pushed function: PasteDampersfromInputsButton
+        function PasteDampersfromInputsButtonPushed(app, event)
+            app.UITable.Data = [];
+            % Put id's into table
+
+            baselineId = [{app.lf0_ID};{app.rf0_ID};{app.lr0_ID};{app.rr0_ID}];
+            alt1Id = [{app.lf1_ID};{app.rf1_ID};{app.lr1_ID};{app.rr1_ID}];
+            alt2Id = [{app.lf2_ID};{app.rf2_ID};{app.lr2_ID};{app.rr2_ID}];
+            alt3Id = [{app.lf3_ID};{app.rf3_ID};{app.lr3_ID};{app.rr3_ID}];
+
+            % baselineClicks = getShockClicks(baselineId);
+            % alt1Clicks = getShockClicks(alt1Id);
+            % alt2Clicks = getShockClicks(alt2Id);
+            % alt3Clicks = getShockClicks(alt3Id);
+
+            try
+
+                input = [baselineId,alt1Id,alt2Id,alt3Id];
+                input = cell2table(input);
+
+                app.UITable.Data = input;
+                app.DamperInput = input;
+
+            catch ME  % Catch any errors
+                % Display an alert message to the user
+                errordlg('Invalid Data, make sure all entries are filled out.','Data Error')
+
+            end
+
+
+        end
+
+        % Button pushed function: SelectDOEFileButton
+        function SelectDOEFileButtonPushed(app, event)
+            app.Lamp.Enable = "off";
+            app.Lamp_2.Visible = "off";
+
+            if isempty(app.lastFolder)
+                startPath = pwd;
+            else
+                startPath = app.lastFolder;
+            end
+
+            [file, path] = uigetfile('*.csv', 'Select a CSV File', startPath);
+
+            app.DOEPath = path;
+            app.DOEfile = file;
+
+            if file ~= 0
+                % Show indeterminate progress bar while loading file
+                d = app.makeProgressBar("File loading");
+
+                try
+                    app.lastFolder = path; % Store the selected folder for next time
+                    app.filePath = fullfile(path, file);
+                    d.Value = .15;
+                    d.Message = 'File Read, Loading Data';
+                    rawData = readmatrix(app.filePath, "Range", "A1", 'OutputType','char');
+
+                    d.Value = .66;
+                    d.Message = 'Data Loaded, Initial Processing...';
+
+                    %[nr, ~] = size(rawData);
+                    rawData(2:end,1) = num2cell(cellfun(@str2num, rawData(2:end,1)));
+
+                    dataHold = sortrows(rawData(2:end,:));
+                    d.Value = 1;
+                    d.Message = 'Initialized';
+                    app.wipSorted = [rawData(1,:);dataHold];
+
+
+
+                    close(d);  % Close the progress dialog
+
+                    showNotification(app, "File Loaded Successfully!", 3);  % Auto-close after 3 seconds
+                    focus(app.ShockDOERankUIFigure)
+
+                    app.vars = load("ShockDOEViewer_Vars.mat");
+                    app.vars = app.vars.vars;
+                catch ME
+                    close(d);  % Ensure dialog closes even on error
+                    uialert(app.ShockDOERankUIFigure, sprintf("Error loading file:\n%s", ME.message), "Load Error");
+                    focus(app.ShockDOERankUIFigure)
+                end
+            else
+                uialert(app.ShockDOERankUIFigure, "No File Selected.", "Warning");
+                focus(app.ShockDOERankUIFigure)
+            end
+        end
+
+        % Button pushed function: ProcessDOEButton
+        function ProcessDOEButtonPushed(app, event)
+            dataSorted = app.wipSorted;
+            [nr, ~] = size(dataSorted);
+
+            damperCompressionIdx = find(contains(dataSorted(1,:),'Damper Compression'));
+            damperRebIdx = find(contains(dataSorted(1,:),'Damper Rebound'));
+
+            damperData = [dataSorted(:,damperCompressionIdx), dataSorted(:,damperRebIdx)]; % Check if Dampers are correct order
+
+            damperIds = getDamperIDs(damperData, nr);
+
+
+            table3_SimID = [{"Baseline"};{"Alt1"};{"Alt2"};{"Alt3"};num2cell(5:nr-1)'];
+
+            app.UITable3.Data = cell2table([table3_SimID,damperIds(2:end,:)]);
+
+            % Get Var Data
+
+
+            coll = cell(nr,1); %premake data collection, same row numbers as raw data
+            i = 1;
+
+            for k = 1:length(app.vars) %vars is a preset variable thats read in, based on desired inputs
+                currIdx = contains(dataSorted(1,:),app.vars{k}); %index that relates to curr var
+                currData = dataSorted(:,currIdx); % all sim runs from this var
+
+                % set all indexes with this var to the currData defined above
+                coll(:,i:i+nnz(currIdx)-1) = currData;
+
+                i = i + nnz(currIdx); % increase paste index
+            end
+
+            %dropdowns = [{"Times_Lap_Time"}, {"BumpstopForceLF_Lap_Max"}, {"BumpstopForceRF_Lap_Max"},...
+                %{"BumpstopForceLR_Lap_Max"}, {"BumpstopForceRR_Lap_Max"}];
+
+            dropdowns = [{"Times_Lap_Time"}, {"BumpstopForceLF_Lap_Max"}, {"BumpstopForceRF_Lap_Max"},...
+                {"BumpstopForceLR_Lap_Max"}, {"BumpstopForceRR_Lap_Max"}];
+
+            % Display max/min values
+            app.filterVar1 = dropdowns{2}; %User Choice 1
+            app.filterVar2 = dropdowns{3};
+            app.filterVar3 = dropdowns{4};
+            app.filterVar4 = dropdowns{5};%User Choice 4
+
+          
+            [app.filterVarData1, min_filterVar1, max_filterVar1] = getFilteredExtrema(coll,app.filterVar1);
+            [app.filterVarData2,min_filterVar2, max_filterVar2] = getFilteredExtrema(coll,app.filterVar2);
+            [app.filterVarData3,min_filterVar3, max_filterVar3] = getFilteredExtrema(coll,app.filterVar3);
+            [app.filterVarData4,min_filterVar4, max_filterVar4] = getFilteredExtrema(coll,app.filterVar4);
+
+
+
+            % Display Extrema from filter data
+            app.Min_1EditField.Value = check0(app,min_filterVar1);
+            app.Max_1EditField.Value = check0(app,max_filterVar1);
+
+            app.Min_2EditField.Value = check0(app,min_filterVar2);
+            app.Max_2EditField.Value = check0(app,max_filterVar2);
+
+            app.Min_3EditField.Value = check0(app,min_filterVar3);
+            app.Max_3EditField.Value = check0(app,max_filterVar3);
+
+            app.Min_4EditField.Value = check0(app,min_filterVar4);
+            app.Max_4EditField.Value = check0(app,max_filterVar4);
+
+            % Set defaults for input filters
+
+            app.EditField_input_filterVar1_max.Value = max_filterVar1;
+            app.EditField_input_filterVar2_max.Value = max_filterVar2;
+            app.EditField_input_filterVar3_max.Value = max_filterVar3;
+            app.EditField_input_filterVar4_max.Value = max_filterVar4;
+
+
+            app.rawcoll = coll;
+            app.rawDamperIds = damperIds;
+
+            app.Lamp.Enable = "on";
+
+        end
+
+        % Value changed function: EditField_input_filterVar1_max
+        function EditField_input_filterVar1_maxValueChanged(app, event)
+            app.inputfiltervar1 = app.EditField_input_filterVar1_max.Value;
+
+        end
+
+        % Value changed function: EditField_input_filterVar2_max
+        function EditField_input_filterVar2_maxValueChanged(app, event)
+            app.inputfiltervar2 = app.EditField_input_filterVar2_max.Value;
+
+        end
+
+        % Value changed function: EditField_input_filterVar3_max
+        function EditField_input_filterVar3_maxValueChanged(app, event)
+            app.inputfiltervar3 = app.EditField_input_filterVar3_max.Value;
+
+        end
+
+        % Value changed function: EditField_input_filterVar4_max
+        function EditField_input_filterVar4_maxValueChanged(app, event)
+            app.inputfiltervar4 = app.EditField_input_filterVar4_max.Value;
+
+        end
+
+        % Button pushed function: FilterPostDataButton
+        function FilterPostDataButtonPushed(app, event)
+            d = app.makeProgressBar("Filtering");
+            d.Message = "Setting Defaults";
+
+            ProcessDOEButtonPushed(app, []);
+            d.Value = .1;
+            d.Message = "Defaults Set";
+
+            % app.inputfiltervar1 = app.EditField_input_filterVar1_max.Value;
+            % app.inputfiltervar2 = app.EditField_input_filterVar2_max.Value;
+            % app.inputfiltervar3 = app.EditField_input_filterVar3_max.Value;
+            % app.inputfiltervar4 = app.EditField_input_filterVar4_max.Value;
+
+            if isempty(app.inputfiltervar1)
+                input_filterVar1_max = app.EditField_input_filterVar1_max.Value;
+            else
+                input_filterVar1_max = app.inputfiltervar1;
+            end
+
+            if isempty(app.inputfiltervar2)
+                input_filterVar2_max = app.EditField_input_filterVar2_max.Value;
+            else
+                input_filterVar2_max = app.inputfiltervar2;
+            end
+
+            if isempty(app.inputfiltervar3)
+                input_filterVar3_max = app.EditField_input_filterVar3_max.Value;
+            else
+                input_filterVar3_max = app.inputfiltervar3;
+            end
+
+            if isempty(app.inputfiltervar4)
+                input_filterVar4_max = app.EditField_input_filterVar4_max.Value;
+            else
+                input_filterVar4_max = app.inputfiltervar4;
+            end
+
+            % Get indexes of which the filters match criteria
+
+
+            idx_inRange_filterVarData1 = [false; (app.filterVarData1 <= input_filterVar1_max)];
+            idx_inRange_filterVarData2 = [false; (app.filterVarData2 <= input_filterVar2_max)];
+            idx_inRange_filterVarData3 = [false; (app.filterVarData3 <= input_filterVar3_max)];
+            idx_inRange_filterVarData4 = [false; (app.filterVarData4 <= input_filterVar4_max)];
+
+            d.Value = .35;
+            d.Message = "Indexes Found";
+
+            % combine indexes
+            idx_inRange_AllFilters = (idx_inRange_filterVarData1 & idx_inRange_filterVarData2 & idx_inRange_filterVarData3 & idx_inRange_filterVarData4);
+
+            % Collect filtered data
+            plotData_withinRange = [app.rawcoll(1,:);app.rawcoll(idx_inRange_AllFilters,:)];
+
+            % Size of filtered data
+            %[nr_withinRange, ~] = size(plotData_withinRange);
+
+            % damper Id's of the filtered sim runs
+            damperOutput = [app.rawDamperIds(1,:);app.rawDamperIds(idx_inRange_AllFilters,:)];
+            % Filtered data
+            outputData = [plotData_withinRange(:,1),damperOutput, plotData_withinRange(:,2:end)];
+            % Extra outputs that are not needed for shock rank
+            dontwant = ["SuspWheelRate", "DamperVel","Bumpstop","ZRear","ZFront", "Yaw"];
+
+            idx_dontwant = contains(outputData(1,:),dontwant) | contains(outputData(1,:),'SF-1');
+
+            outputData_hold = outputData; % has outputData with the bumpstop data for index search
+
+            % Final filtered Data, should be visible
+            outputData(:,idx_dontwant) = []; % need to link new filtered data to the edit boxes
+
+            d.Value = .8;
+            d.Message = "Data Filtered, Exporting";
+
+            [app.filterVarData1, min_filterVar1, max_filterVar1] = getFilteredExtrema(outputData_hold,app.filterVar1);
+            [app.filterVarData2,min_filterVar2, max_filterVar2] = getFilteredExtrema(outputData_hold,app.filterVar2);
+            [app.filterVarData3,min_filterVar3, max_filterVar3] = getFilteredExtrema(outputData_hold,app.filterVar3);
+            [app.filterVarData4,min_filterVar4, max_filterVar4] = getFilteredExtrema(outputData_hold,app.filterVar4);
+
+            app.Min_1EditField.Value = min_filterVar1;
+            app.Max_1EditField.Value = max_filterVar1;
+            app.Min_2EditField.Value = min_filterVar2;
+            app.Max_2EditField.Value = max_filterVar2;
+            app.Min_3EditField.Value = min_filterVar3;
+            app.Max_3EditField.Value = max_filterVar3;
+            app.Min_4EditField.Value = min_filterVar4;
+            app.Max_4EditField.Value = max_filterVar4;
+
+            % Make sure edit fields didnt get changed back
+            app.EditField_input_filterVar1_max.Value = input_filterVar1_max;
+            app.EditField_input_filterVar2_max.Value = input_filterVar2_max;
+            app.EditField_input_filterVar3_max.Value = input_filterVar3_max;
+            app.EditField_input_filterVar4_max.Value = input_filterVar4_max;
+
+            d.Value = 1;
+            d.Message = "Finalized";
+
+
+            app.UITable3.Data = cell2table(outputData(2:end,1:5));
+
+            close(d)
+
+
+            % Get number of filtered sims, and total amount left
+
+            numLeft = (nnz(idx_inRange_AllFilters));
+            numFiltered = (nnz(~idx_inRange_AllFilters))-1;
+
+            message = sprintf("Sims Filtered: %d\nSims Left: %d", numFiltered, numLeft);
+            uialert(app.ShockDOERankUIFigure, message, 'Filter Summary', 'Icon', 'success');
+
+            app.FilteredData = outputData;
+
+            app.PerformRankButton.Enable = "on";
+
+
+            app.pdata_withinRange = plotData_withinRange;
+
+            app.inputData = [damperOutput, plotData_withinRange]; %for rank
+
+        end
+
+        % Button pushed function: PerformRankButton
+        function PerformRankButtonPushed(app, event)
+
+
+            logMessage('PerformRankButtonPushed started.');
+
+            [reserveFileName, reservePath] = uigetfile('.xlsm', 'Select Reserve File');
+            if isequal(reserveFileName, 0)
+                logMessage('User canceled reserve file selection.');
+                return;
+            end
+            reserveFP = fullfile(reservePath, reserveFileName);
+
+            filename = strcat(strrep(app.DOEfile,'.csv',''), '_Shock Rank.xlsm');
+            pathname = app.DOEPath;
+            exportFP = fullfile(pathname, filename);
+
+            try
+                d = app.makeProgressBar("Script Running...");
+                logMessage('Progress bar created.');
+
+                d.Message = "Fixing Segments";
+                d.Value = 0.05;
+                logMessage('Starting avgSF1ab...');
+                l_inputData = avgSF1ab(app.inputData);
+                logMessage('avgSF1ab completed.');
+
+                d.Message = "Sorting and Ranking";
+                d.Value = 0.35;
+                logMessage('Calling rankData_v2...');
+                [rankedData, laptimes] = rankData_v2(l_inputData);
+                logMessage('rankData_v2 completed.');
+
+                d.Message = "Data Ranked, Exporting...";
+                d.Value = 0.6;
+
+                logMessage(['Copying file from ' reserveFP ' to ' exportFP]);
+                copyfile(reserveFP, exportFP);
+                logMessage(['Confirmed reserveFP exists: ' string(exist(reserveFP, 'file'))]);
+
+                logMessage('Writing ranked data to Excel...');
+                writecell(rankedData, exportFP, 'Sheet', 'Export Data');
+                logMessage('Excel write complete.');
+
+                d.Value = 1;
+                pause(0.5);
+                close(d);
+
+                uialert(app.ShockDOERankUIFigure, "File Saved", 'Shock DOE Rank', 'Icon', 'success');
+                logMessage('File saved alert shown.');
+            catch ME
+                logMessage(['Error: ' ME.message]);
+
+                % Show alert in UI
+                uialert(app.ShockDOERankUIFigure, sprintf('Failed to save file:\n%s\nA log file has been opened for details.', ME.message), 'Save Error');
+
+                % Attempt to open the log file automatically
+                try
+                    if isdeployed
+                        logPath = fullfile(tempdir, 'rank_app_log.txt');
+                    else
+                        logPath = fullfile(pwd, 'rank_app_log.txt');
+                    end
+                    if ispc
+                        system(['start "" "' logPath '"']);
+                    elseif ismac
+                        system(['open "' logPath '"']);
+                    elseif isunix
+                        system(['xdg-open "' logPath '"']);
+                    end
+                catch
+                    % Fails silently if system command doesn’t work
+                end
+            end
+
+            app.Lamp_2.Visible = "on";
+            app.RankExportedtoEditField.Value = exportFP;
+
+            if app.openFile & isfile(exportFP)
+                system(['start "" "' exportFP '"']);
+            elseif app.openFile & ~isfile(exportFP)
+                uialert(app.ShockDOERankUIFigure, 'The file could not be opened. It may not exist or the path is invalid.', 'Open File Error');
+            end
+
+            logMessage('PerformRankButtonPushed finished.');
+
+
+
+
+
+            function logMessage(msg)
+                persistent logInitialized
+                try
+                    if isdeployed
+                        logPath = fullfile(tempdir, 'rank_app_log.txt');
+                    else
+                        logPath = fullfile(pwd, 'rank_app_log.txt');
+                    end
+
+                    % Clear the file on first call
+                    if isempty(logInitialized)
+                        fid = fopen(logPath, 'w');  % Overwrite mode clears the file
+                        logInitialized = true;
+                    else
+                        fid = fopen(logPath, 'a');  % Append for subsequent messages
+                    end
+
+                    if fid ~= -1
+                        fprintf(fid, '[%s] %s\n', datestr(now, 'yyyy-mm-dd HH:MM:SS'), msg);
+                        fclose(fid);
+                    end
+                catch
+                    % Fails silently if logging fails
+                end
+            end
+
+
+
+        end
+
+        % Value changed function: OpenFileCheckBox
+        function OpenFileCheckBoxValueChanged(app, event)
+            app.openFile = app.OpenFileCheckBox.Value;
+
+        end
+
+        % Changes arrangement of the app based on UIFigure width
+        function updateAppLayout(app, event)
+            currentFigureWidth = app.ShockDOERankUIFigure.Position(3);
+            if(currentFigureWidth <= app.onePanelWidth)
+                % Change to a 3x1 grid
+                app.GridLayout.RowHeight = {1109, 1109, 1109};
+                app.GridLayout.ColumnWidth = {'1x'};
+                app.CenterPanel.Layout.Row = 1;
+                app.CenterPanel.Layout.Column = 1;
+                app.LeftPanel.Layout.Row = 2;
+                app.LeftPanel.Layout.Column = 1;
+                app.RightPanel.Layout.Row = 3;
+                app.RightPanel.Layout.Column = 1;
+            elseif (currentFigureWidth > app.onePanelWidth && currentFigureWidth <= app.twoPanelWidth)
+                % Change to a 2x2 grid
+                app.GridLayout.RowHeight = {1109, 1109};
+                app.GridLayout.ColumnWidth = {'1x', '1x'};
+                app.CenterPanel.Layout.Row = 1;
+                app.CenterPanel.Layout.Column = [1,2];
+                app.LeftPanel.Layout.Row = 2;
+                app.LeftPanel.Layout.Column = 1;
+                app.RightPanel.Layout.Row = 2;
+                app.RightPanel.Layout.Column = 2;
+            else
+                % Change to a 1x3 grid
+                app.GridLayout.RowHeight = {'1x'};
+                app.GridLayout.ColumnWidth = {323, '1x', 494};
+                app.LeftPanel.Layout.Row = 1;
+                app.LeftPanel.Layout.Column = 1;
+                app.CenterPanel.Layout.Row = 1;
+                app.CenterPanel.Layout.Column = 2;
+                app.RightPanel.Layout.Row = 1;
+                app.RightPanel.Layout.Column = 3;
+            end
+        end
+    end
+
+    % Component initialization
+    methods (Access = private)
+
+        % Create UIFigure and components
+        function createComponents(app)
+
+            % Get the file path for locating images
+            pathToMLAPP = fileparts(mfilename('fullpath'));
+
+            % Create ShockDOERankUIFigure and hide until all components are created
+            app.ShockDOERankUIFigure = uifigure('Visible', 'off');
+            app.ShockDOERankUIFigure.AutoResizeChildren = 'off';
+            app.ShockDOERankUIFigure.Position = [100 100 1513 1109];
+            app.ShockDOERankUIFigure.Name = 'Shock DOE Rank';
+            app.ShockDOERankUIFigure.Icon = fullfile(pathToMLAPP, 'SpireImage.png');
+            app.ShockDOERankUIFigure.WindowState = 'maximized';
+
+            % Create GridLayout
+            app.GridLayout = uigridlayout(app.ShockDOERankUIFigure);
+            app.GridLayout.ColumnWidth = {323, '1x', 494};
+            app.GridLayout.RowHeight = {'1x'};
+            app.GridLayout.ColumnSpacing = 0;
+            app.GridLayout.RowSpacing = 0;
+            app.GridLayout.Padding = [0 0 0 0];
+            app.GridLayout.Scrollable = 'on';
+
+            % Create LeftPanel
+            app.LeftPanel = uipanel(app.GridLayout);
+            app.LeftPanel.BackgroundColor = [0.149 0.149 0.149];
+            app.LeftPanel.Layout.Row = 1;
+            app.LeftPanel.Layout.Column = 1;
+
+            % Create PasteDampersfromSetupCompareButton
+            app.PasteDampersfromSetupCompareButton = uibutton(app.LeftPanel, 'push');
+            app.PasteDampersfromSetupCompareButton.ButtonPushedFcn = createCallbackFcn(app, @PasteDampersfromSetupCompareButtonPushed, true);
+            app.PasteDampersfromSetupCompareButton.IconAlignment = 'center';
+            app.PasteDampersfromSetupCompareButton.FontName = 'Verdana';
+            app.PasteDampersfromSetupCompareButton.FontColor = [1 0 0];
+            app.PasteDampersfromSetupCompareButton.Position = [44 993 232 33];
+            app.PasteDampersfromSetupCompareButton.Text = 'Paste Dampers from Setup Compare';
+
+            % Create ofIterationsEditFieldLabel
+            app.ofIterationsEditFieldLabel = uilabel(app.LeftPanel);
+            app.ofIterationsEditFieldLabel.BackgroundColor = [0.149 0.149 0.149];
+            app.ofIterationsEditFieldLabel.HorizontalAlignment = 'right';
+            app.ofIterationsEditFieldLabel.FontName = 'Verdana';
+            app.ofIterationsEditFieldLabel.FontColor = [1 1 1];
+            app.ofIterationsEditFieldLabel.Position = [28 374 93 22];
+            app.ofIterationsEditFieldLabel.Text = '# of Iterations';
+
+            % Create ofIterationsEditField
+            app.ofIterationsEditField = uieditfield(app.LeftPanel, 'numeric');
+            app.ofIterationsEditField.Limits = [1 5000];
+            app.ofIterationsEditField.ValueChangedFcn = createCallbackFcn(app, @ofIterationsEditFieldValueChanged, true);
+            app.ofIterationsEditField.FontName = 'Verdana';
+            app.ofIterationsEditField.FontColor = [1 1 1];
+            app.ofIterationsEditField.BackgroundColor = [0.149 0.149 0.149];
+            app.ofIterationsEditField.Position = [136 374 100 22];
+            app.ofIterationsEditField.Value = 2500;
+
+            % Create SaveDOEBatchButton
+            app.SaveDOEBatchButton = uibutton(app.LeftPanel, 'push');
+            app.SaveDOEBatchButton.ButtonPushedFcn = createCallbackFcn(app, @SaveDOEBatchButtonPushed, true);
+            app.SaveDOEBatchButton.FontName = 'Verdana';
+            app.SaveDOEBatchButton.FontSize = 14;
+            app.SaveDOEBatchButton.FontWeight = 'bold';
+            app.SaveDOEBatchButton.FontColor = [1 0 0];
+            app.SaveDOEBatchButton.Tooltip = {'Valving + Springs Get Written As well. Random runs are made with baseline valving.'};
+            app.SaveDOEBatchButton.Position = [94 234 140 26];
+            app.SaveDOEBatchButton.Text = 'Save DOE Batch';
+
+            % Create ClickDeltaEditFieldLabel
+            app.ClickDeltaEditFieldLabel = uilabel(app.LeftPanel);
+            app.ClickDeltaEditFieldLabel.BackgroundColor = [0.149 0.149 0.149];
+            app.ClickDeltaEditFieldLabel.HorizontalAlignment = 'right';
+            app.ClickDeltaEditFieldLabel.FontName = 'Verdana';
+            app.ClickDeltaEditFieldLabel.FontColor = [1 1 1];
+            app.ClickDeltaEditFieldLabel.Position = [57 327 69 22];
+            app.ClickDeltaEditFieldLabel.Text = 'Click Delta';
+
+            % Create ClickDeltaEditField
+            app.ClickDeltaEditField = uieditfield(app.LeftPanel, 'numeric');
+            app.ClickDeltaEditField.Limits = [-50 50];
+            app.ClickDeltaEditField.ValueChangedFcn = createCallbackFcn(app, @ClickDeltaEditFieldValueChanged, true);
+            app.ClickDeltaEditField.FontName = 'Verdana';
+            app.ClickDeltaEditField.FontColor = [1 1 1];
+            app.ClickDeltaEditField.BackgroundColor = [0.149 0.149 0.149];
+            app.ClickDeltaEditField.Tooltip = {'"Value will be adjusted if not possible, default is 10"'};
+            app.ClickDeltaEditField.Position = [135 327 100 22];
+            app.ClickDeltaEditField.Value = 10;
+
+            % Create GenerateButton
+            app.GenerateButton = uibutton(app.LeftPanel, 'push');
+            app.GenerateButton.ButtonPushedFcn = createCallbackFcn(app, @GenerateButtonPushed, true);
+            app.GenerateButton.BackgroundColor = [1 1 1];
+            app.GenerateButton.FontName = 'Verdana';
+            app.GenerateButton.FontSize = 14;
+            app.GenerateButton.FontWeight = 'bold';
+            app.GenerateButton.FontColor = [1 0 0];
+            app.GenerateButton.Position = [114 279 100 26];
+            app.GenerateButton.Text = 'Generate';
+
+            % Create EditField
+            app.EditField = uieditfield(app.LeftPanel, 'text');
+            app.EditField.ValueChangedFcn = createCallbackFcn(app, @EditFieldValueChanged, true);
+            app.EditField.Position = [47 923 100 22];
+
+            % Create EditField_2
+            app.EditField_2 = uieditfield(app.LeftPanel, 'text');
+            app.EditField_2.ValueChangedFcn = createCallbackFcn(app, @EditField_2ValueChanged, true);
+            app.EditField_2.Position = [165 923 100 22];
+
+            % Create EditField_3
+            app.EditField_3 = uieditfield(app.LeftPanel, 'text');
+            app.EditField_3.ValueChangedFcn = createCallbackFcn(app, @EditField_3ValueChanged, true);
+            app.EditField_3.Position = [48 890 100 22];
+
+            % Create EditField_4
+            app.EditField_4 = uieditfield(app.LeftPanel, 'text');
+            app.EditField_4.ValueChangedFcn = createCallbackFcn(app, @EditField_4ValueChanged, true);
+            app.EditField_4.Position = [166 890 100 22];
+
+            % Create BaselineDampersLabel
+            app.BaselineDampersLabel = uilabel(app.LeftPanel);
+            app.BaselineDampersLabel.HorizontalAlignment = 'center';
+            app.BaselineDampersLabel.FontWeight = 'bold';
+            app.BaselineDampersLabel.FontColor = [1 1 1];
+            app.BaselineDampersLabel.Position = [105 952 109 22];
+            app.BaselineDampersLabel.Text = 'Baseline Dampers';
+
+            % Create EditField_5
+            app.EditField_5 = uieditfield(app.LeftPanel, 'text');
+            app.EditField_5.ValueChangedFcn = createCallbackFcn(app, @EditField_5ValueChanged, true);
+            app.EditField_5.Position = [47 828 100 22];
+
+            % Create EditField_6
+            app.EditField_6 = uieditfield(app.LeftPanel, 'text');
+            app.EditField_6.ValueChangedFcn = createCallbackFcn(app, @EditField_6ValueChanged, true);
+            app.EditField_6.Position = [165 828 100 22];
+
+            % Create EditField_7
+            app.EditField_7 = uieditfield(app.LeftPanel, 'text');
+            app.EditField_7.ValueChangedFcn = createCallbackFcn(app, @EditField_7ValueChanged, true);
+            app.EditField_7.Position = [48 795 100 22];
+
+            % Create EditField_8
+            app.EditField_8 = uieditfield(app.LeftPanel, 'text');
+            app.EditField_8.ValueChangedFcn = createCallbackFcn(app, @EditField_8ValueChanged, true);
+            app.EditField_8.Position = [166 795 100 22];
+
+            % Create Alt1DampersLabel
+            app.Alt1DampersLabel = uilabel(app.LeftPanel);
+            app.Alt1DampersLabel.HorizontalAlignment = 'center';
+            app.Alt1DampersLabel.FontWeight = 'bold';
+            app.Alt1DampersLabel.FontColor = [1 1 1];
+            app.Alt1DampersLabel.Position = [119 857 82 22];
+            app.Alt1DampersLabel.Text = 'Alt1 Dampers';
+
+            % Create EditField_9
+            app.EditField_9 = uieditfield(app.LeftPanel, 'text');
+            app.EditField_9.ValueChangedFcn = createCallbackFcn(app, @EditField_9ValueChanged, true);
+            app.EditField_9.Position = [48 731 100 22];
+
+            % Create EditField_10
+            app.EditField_10 = uieditfield(app.LeftPanel, 'text');
+            app.EditField_10.ValueChangedFcn = createCallbackFcn(app, @EditField_10ValueChanged, true);
+            app.EditField_10.Position = [166 731 100 22];
+
+            % Create EditField_11
+            app.EditField_11 = uieditfield(app.LeftPanel, 'text');
+            app.EditField_11.ValueChangedFcn = createCallbackFcn(app, @EditField_11ValueChanged, true);
+            app.EditField_11.Position = [49 698 100 22];
+
+            % Create EditField_12
+            app.EditField_12 = uieditfield(app.LeftPanel, 'text');
+            app.EditField_12.ValueChangedFcn = createCallbackFcn(app, @EditField_12ValueChanged, true);
+            app.EditField_12.Position = [167 698 100 22];
+
+            % Create Alt2DampersLabel
+            app.Alt2DampersLabel = uilabel(app.LeftPanel);
+            app.Alt2DampersLabel.HorizontalAlignment = 'center';
+            app.Alt2DampersLabel.FontWeight = 'bold';
+            app.Alt2DampersLabel.FontColor = [1 1 1];
+            app.Alt2DampersLabel.Position = [120 760 82 22];
+            app.Alt2DampersLabel.Text = 'Alt2 Dampers';
+
+            % Create EditField_13
+            app.EditField_13 = uieditfield(app.LeftPanel, 'text');
+            app.EditField_13.ValueChangedFcn = createCallbackFcn(app, @EditField_13ValueChanged, true);
+            app.EditField_13.Position = [47 634 100 22];
+
+            % Create EditField_14
+            app.EditField_14 = uieditfield(app.LeftPanel, 'text');
+            app.EditField_14.ValueChangedFcn = createCallbackFcn(app, @EditField_14ValueChanged, true);
+            app.EditField_14.Position = [164 634 100 22];
+
+            % Create EditField_15
+            app.EditField_15 = uieditfield(app.LeftPanel, 'text');
+            app.EditField_15.ValueChangedFcn = createCallbackFcn(app, @EditField_15ValueChanged, true);
+            app.EditField_15.Position = [48 601 100 22];
+
+            % Create EditField_16
+            app.EditField_16 = uieditfield(app.LeftPanel, 'text');
+            app.EditField_16.ValueChangedFcn = createCallbackFcn(app, @EditField_16ValueChanged, true);
+            app.EditField_16.Position = [166 601 100 22];
+
+            % Create Alt3DampersLabel
+            app.Alt3DampersLabel = uilabel(app.LeftPanel);
+            app.Alt3DampersLabel.HorizontalAlignment = 'center';
+            app.Alt3DampersLabel.FontWeight = 'bold';
+            app.Alt3DampersLabel.FontColor = [1 1 1];
+            app.Alt3DampersLabel.Position = [119 663 82 22];
+            app.Alt3DampersLabel.Text = 'Alt3 Dampers';
+
+            % Create Label
+            app.Label = uilabel(app.LeftPanel);
+            app.Label.HorizontalAlignment = 'center';
+            app.Label.WordWrap = 'on';
+            app.Label.FontColor = [1 1 1];
+            app.Label.Position = [7 1033 311 59];
+            app.Label.Text = 'Either copy dampers from setup compare (or 4x4 cell array) and hit the button, or individually paste damper ID''s in text boxes below and paste from inputs';
+
+            % Create PasteDampersfromInputsButton
+            app.PasteDampersfromInputsButton = uibutton(app.LeftPanel, 'push');
+            app.PasteDampersfromInputsButton.ButtonPushedFcn = createCallbackFcn(app, @PasteDampersfromInputsButtonPushed, true);
+            app.PasteDampersfromInputsButton.FontSize = 14;
+            app.PasteDampersfromInputsButton.FontColor = [1 0 0];
+            app.PasteDampersfromInputsButton.Position = [69 551 185 25];
+            app.PasteDampersfromInputsButton.Text = 'Paste Dampers from Inputs';
+
+            % Create issym
+            app.issym = uicheckbox(app.LeftPanel);
+            app.issym.Text = 'Force Symmetry?';
+            app.issym.FontColor = [1 1 1];
+            app.issym.Position = [47 470 117 22];
+
+            % Create CenterPanel
+            app.CenterPanel = uipanel(app.GridLayout);
+            app.CenterPanel.BackgroundColor = [0.149 0.149 0.149];
+            app.CenterPanel.Layout.Row = 1;
+            app.CenterPanel.Layout.Column = 2;
+
+            % Create UITable
+            app.UITable = uitable(app.CenterPanel);
+            app.UITable.BackgroundColor = [0.6196 0.7882 0.7608;0.902 0.902 0.902];
+            app.UITable.ColumnName = {'Baseline'; 'Alt1'; 'Alt2'; 'Alt3'};
+            app.UITable.RowName = {'LF'; 'RF'; 'LR'; 'RR'};
+            app.UITable.Position = [7 952 680 120];
+
+            % Create UITable2
+            app.UITable2 = uitable(app.CenterPanel);
+            app.UITable2.BackgroundColor = [0.6196 0.7882 0.7608;0.902 0.902 0.902];
+            app.UITable2.ColumnName = {'LF LSC'; 'LF HSC'; 'LF LSR'; 'LF HSR'; 'RF LSC'; 'RF HSC'; 'RF LSR'; 'RF HSR'; 'LR LSC'; 'LR HSC'; 'LR LSR'; 'LR HSR'; 'RR LSC'; 'RR HSC'; 'RR LSR'; 'RR HSR'};
+            app.UITable2.RowName = {};
+            app.UITable2.ForegroundColor = [0.149 0.149 0.149];
+            app.UITable2.Position = [7 13 680 900];
+
+            % Create GeneratedClicksFirstfourarefrominputsLabel
+            app.GeneratedClicksFirstfourarefrominputsLabel = uilabel(app.CenterPanel);
+            app.GeneratedClicksFirstfourarefrominputsLabel.HorizontalAlignment = 'center';
+            app.GeneratedClicksFirstfourarefrominputsLabel.FontSize = 14;
+            app.GeneratedClicksFirstfourarefrominputsLabel.FontWeight = 'bold';
+            app.GeneratedClicksFirstfourarefrominputsLabel.FontColor = [1 1 1];
+            app.GeneratedClicksFirstfourarefrominputsLabel.Position = [18 912 651 22];
+            app.GeneratedClicksFirstfourarefrominputsLabel.Text = 'Generated Clicks, First four are from inputs';
+
+            % Create DampersfromInputLabel
+            app.DampersfromInputLabel = uilabel(app.CenterPanel);
+            app.DampersfromInputLabel.HorizontalAlignment = 'center';
+            app.DampersfromInputLabel.FontSize = 14;
+            app.DampersfromInputLabel.FontWeight = 'bold';
+            app.DampersfromInputLabel.FontColor = [1 1 1];
+            app.DampersfromInputLabel.Position = [19 1080 666 22];
+            app.DampersfromInputLabel.Text = 'Dampers from Input';
+
+            % Create RightPanel
+            app.RightPanel = uipanel(app.GridLayout);
+            app.RightPanel.BorderColor = [0 0.4471 0.7412];
+            app.RightPanel.HighlightColor = [0 0.4471 0.7412];
+            app.RightPanel.TitlePosition = 'righttop';
+            app.RightPanel.BackgroundColor = [0.149 0.149 0.149];
+            app.RightPanel.Layout.Row = 1;
+            app.RightPanel.Layout.Column = 3;
+
+            % Create PostDOELabel
+            app.PostDOELabel = uilabel(app.RightPanel);
+            app.PostDOELabel.HorizontalAlignment = 'center';
+            app.PostDOELabel.FontSize = 24;
+            app.PostDOELabel.FontWeight = 'bold';
+            app.PostDOELabel.FontColor = [1 1 1];
+            app.PostDOELabel.Position = [49 1070 395 32];
+            app.PostDOELabel.Text = 'Post-DOE';
+
+            % Create SelectDOEFileButton
+            app.SelectDOEFileButton = uibutton(app.RightPanel, 'push');
+            app.SelectDOEFileButton.ButtonPushedFcn = createCallbackFcn(app, @SelectDOEFileButtonPushed, true);
+            app.SelectDOEFileButton.FontColor = [1 0 0];
+            app.SelectDOEFileButton.Position = [58 1025 100 23];
+            app.SelectDOEFileButton.Text = 'Select DOE File';
+
+            % Create ProcessDOEButton
+            app.ProcessDOEButton = uibutton(app.RightPanel, 'push');
+            app.ProcessDOEButton.ButtonPushedFcn = createCallbackFcn(app, @ProcessDOEButtonPushed, true);
+            app.ProcessDOEButton.FontColor = [1 0 0];
+            app.ProcessDOEButton.Tooltip = {'Must be a "Lap" segment for filter to process to work.'};
+            app.ProcessDOEButton.Position = [288 1024 100 23];
+            app.ProcessDOEButton.Text = 'Process DOE';
+
+            % Create UITable3
+            app.UITable3 = uitable(app.RightPanel);
+            app.UITable3.ColumnName = {'SimID'; 'LF'; 'RF'; 'LR'; 'RR'};
+            app.UITable3.RowName = {};
+            app.UITable3.Position = [7 816 482 185];
+
+            % Create Min_1EditFieldLabel
+            app.Min_1EditFieldLabel = uilabel(app.RightPanel);
+            app.Min_1EditFieldLabel.HorizontalAlignment = 'center';
+            app.Min_1EditFieldLabel.FontColor = [0.5333 0.7294 0.8588];
+            app.Min_1EditFieldLabel.Position = [166 776 38 22];
+            app.Min_1EditFieldLabel.Text = 'Min_1';
+
+            % Create Min_1EditField
+            app.Min_1EditField = uieditfield(app.RightPanel, 'numeric');
+            app.Min_1EditField.Editable = 'off';
+            app.Min_1EditField.HorizontalAlignment = 'center';
+            app.Min_1EditField.FontColor = [0.0235 0.4667 0.7608];
+            app.Min_1EditField.Position = [219 776 100 22];
+
+            % Create Max_1EditFieldLabel
+            app.Max_1EditFieldLabel = uilabel(app.RightPanel);
+            app.Max_1EditFieldLabel.HorizontalAlignment = 'right';
+            app.Max_1EditFieldLabel.FontColor = [1 0 0];
+            app.Max_1EditFieldLabel.Position = [164 741 41 22];
+            app.Max_1EditFieldLabel.Text = 'Max_1';
+
+            % Create Max_1EditField
+            app.Max_1EditField = uieditfield(app.RightPanel, 'numeric');
+            app.Max_1EditField.Editable = 'off';
+            app.Max_1EditField.HorizontalAlignment = 'center';
+            app.Max_1EditField.FontColor = [1 0 0];
+            app.Max_1EditField.Position = [220 741 100 22];
+
+            % Create MaxLFBumpstopForceLabel
+            app.MaxLFBumpstopForceLabel = uilabel(app.RightPanel);
+            app.MaxLFBumpstopForceLabel.HorizontalAlignment = 'right';
+            app.MaxLFBumpstopForceLabel.FontColor = [1 1 1];
+            app.MaxLFBumpstopForceLabel.Position = [8 760 138 22];
+            app.MaxLFBumpstopForceLabel.Text = 'Max LF Bumpstop Force';
+
+            % Create Min_2EditFieldLabel
+            app.Min_2EditFieldLabel = uilabel(app.RightPanel);
+            app.Min_2EditFieldLabel.HorizontalAlignment = 'right';
+            app.Min_2EditFieldLabel.FontColor = [0.5333 0.7294 0.8588];
+            app.Min_2EditFieldLabel.Position = [167 702 38 22];
+            app.Min_2EditFieldLabel.Text = 'Min_2';
+
+            % Create Min_2EditField
+            app.Min_2EditField = uieditfield(app.RightPanel, 'numeric');
+            app.Min_2EditField.Editable = 'off';
+            app.Min_2EditField.HorizontalAlignment = 'center';
+            app.Min_2EditField.FontColor = [0.0235 0.4667 0.7608];
+            app.Min_2EditField.Position = [220 702 100 22];
+
+            % Create Max_2EditFieldLabel
+            app.Max_2EditFieldLabel = uilabel(app.RightPanel);
+            app.Max_2EditFieldLabel.HorizontalAlignment = 'right';
+            app.Max_2EditFieldLabel.FontColor = [1 0 0];
+            app.Max_2EditFieldLabel.Position = [165 667 41 22];
+            app.Max_2EditFieldLabel.Text = 'Max_2';
+
+            % Create Max_2EditField
+            app.Max_2EditField = uieditfield(app.RightPanel, 'numeric');
+            app.Max_2EditField.Editable = 'off';
+            app.Max_2EditField.HorizontalAlignment = 'center';
+            app.Max_2EditField.FontColor = [1 0 0];
+            app.Max_2EditField.Position = [221 667 100 22];
+
+            % Create MaxRFBumpstopForceLabel
+            app.MaxRFBumpstopForceLabel = uilabel(app.RightPanel);
+            app.MaxRFBumpstopForceLabel.HorizontalAlignment = 'right';
+            app.MaxRFBumpstopForceLabel.FontColor = [1 1 1];
+            app.MaxRFBumpstopForceLabel.Position = [8 686 139 22];
+            app.MaxRFBumpstopForceLabel.Text = 'Max RF Bumpstop Force';
+
+            % Create Min_3EditFieldLabel
+            app.Min_3EditFieldLabel = uilabel(app.RightPanel);
+            app.Min_3EditFieldLabel.HorizontalAlignment = 'right';
+            app.Min_3EditFieldLabel.FontColor = [0.5333 0.7294 0.8588];
+            app.Min_3EditFieldLabel.Position = [168 631 38 22];
+            app.Min_3EditFieldLabel.Text = 'Min_3';
+
+            % Create Min_3EditField
+            app.Min_3EditField = uieditfield(app.RightPanel, 'numeric');
+            app.Min_3EditField.Editable = 'off';
+            app.Min_3EditField.HorizontalAlignment = 'center';
+            app.Min_3EditField.FontColor = [0.0235 0.4667 0.7608];
+            app.Min_3EditField.Position = [221 631 100 22];
+
+            % Create Max_3EditFieldLabel
+            app.Max_3EditFieldLabel = uilabel(app.RightPanel);
+            app.Max_3EditFieldLabel.HorizontalAlignment = 'right';
+            app.Max_3EditFieldLabel.FontColor = [1 0 0];
+            app.Max_3EditFieldLabel.Position = [166 596 41 22];
+            app.Max_3EditFieldLabel.Text = 'Max_3';
+
+            % Create Max_3EditField
+            app.Max_3EditField = uieditfield(app.RightPanel, 'numeric');
+            app.Max_3EditField.Editable = 'off';
+            app.Max_3EditField.HorizontalAlignment = 'center';
+            app.Max_3EditField.FontColor = [1 0 0];
+            app.Max_3EditField.Position = [222 596 100 22];
+
+            % Create MaxLRBumpstopForceLabel
+            app.MaxLRBumpstopForceLabel = uilabel(app.RightPanel);
+            app.MaxLRBumpstopForceLabel.HorizontalAlignment = 'right';
+            app.MaxLRBumpstopForceLabel.FontColor = [1 1 1];
+            app.MaxLRBumpstopForceLabel.Position = [8 615 140 22];
+            app.MaxLRBumpstopForceLabel.Text = 'Max LR Bumpstop Force';
+
+            % Create Min_4EditFieldLabel
+            app.Min_4EditFieldLabel = uilabel(app.RightPanel);
+            app.Min_4EditFieldLabel.HorizontalAlignment = 'right';
+            app.Min_4EditFieldLabel.FontColor = [0.5333 0.7294 0.8588];
+            app.Min_4EditFieldLabel.Position = [169 557 38 22];
+            app.Min_4EditFieldLabel.Text = 'Min_4';
+
+            % Create Min_4EditField
+            app.Min_4EditField = uieditfield(app.RightPanel, 'numeric');
+            app.Min_4EditField.Editable = 'off';
+            app.Min_4EditField.HorizontalAlignment = 'center';
+            app.Min_4EditField.FontColor = [0.0235 0.4667 0.7608];
+            app.Min_4EditField.Position = [222 557 100 22];
+
+            % Create Max_4EditFieldLabel
+            app.Max_4EditFieldLabel = uilabel(app.RightPanel);
+            app.Max_4EditFieldLabel.HorizontalAlignment = 'right';
+            app.Max_4EditFieldLabel.FontColor = [1 0 0];
+            app.Max_4EditFieldLabel.Position = [167 522 41 22];
+            app.Max_4EditFieldLabel.Text = 'Max_4';
+
+            % Create Max_4EditField
+            app.Max_4EditField = uieditfield(app.RightPanel, 'numeric');
+            app.Max_4EditField.Editable = 'off';
+            app.Max_4EditField.HorizontalAlignment = 'center';
+            app.Max_4EditField.FontColor = [1 0 0];
+            app.Max_4EditField.Position = [223 522 100 22];
+
+            % Create MaxRRBumpstopForceLabel
+            app.MaxRRBumpstopForceLabel = uilabel(app.RightPanel);
+            app.MaxRRBumpstopForceLabel.HorizontalAlignment = 'right';
+            app.MaxRRBumpstopForceLabel.FontColor = [1 1 1];
+            app.MaxRRBumpstopForceLabel.Position = [8 541 141 22];
+            app.MaxRRBumpstopForceLabel.Text = 'Max RR Bumpstop Force';
+
+            % Create EditField_input_filterVar1_max
+            app.EditField_input_filterVar1_max = uieditfield(app.RightPanel, 'numeric');
+            app.EditField_input_filterVar1_max.ValueChangedFcn = createCallbackFcn(app, @EditField_input_filterVar1_maxValueChanged, true);
+            app.EditField_input_filterVar1_max.HorizontalAlignment = 'center';
+            app.EditField_input_filterVar1_max.Position = [359 741 100 22];
+
+            % Create EditField_input_filterVar2_max
+            app.EditField_input_filterVar2_max = uieditfield(app.RightPanel, 'numeric');
+            app.EditField_input_filterVar2_max.ValueChangedFcn = createCallbackFcn(app, @EditField_input_filterVar2_maxValueChanged, true);
+            app.EditField_input_filterVar2_max.HorizontalAlignment = 'center';
+            app.EditField_input_filterVar2_max.Position = [359 663 100 22];
+
+            % Create EditField_input_filterVar3_max
+            app.EditField_input_filterVar3_max = uieditfield(app.RightPanel, 'numeric');
+            app.EditField_input_filterVar3_max.ValueChangedFcn = createCallbackFcn(app, @EditField_input_filterVar3_maxValueChanged, true);
+            app.EditField_input_filterVar3_max.HorizontalAlignment = 'center';
+            app.EditField_input_filterVar3_max.Position = [360 594 100 22];
+
+            % Create EditField_input_filterVar4_max
+            app.EditField_input_filterVar4_max = uieditfield(app.RightPanel, 'numeric');
+            app.EditField_input_filterVar4_max.ValueChangedFcn = createCallbackFcn(app, @EditField_input_filterVar4_maxValueChanged, true);
+            app.EditField_input_filterVar4_max.HorizontalAlignment = 'center';
+            app.EditField_input_filterVar4_max.Position = [359 520 100 22];
+
+            % Create FilterPostDataButton
+            app.FilterPostDataButton = uibutton(app.RightPanel, 'push');
+            app.FilterPostDataButton.ButtonPushedFcn = createCallbackFcn(app, @FilterPostDataButtonPushed, true);
+            app.FilterPostDataButton.FontColor = [1 0 0];
+            app.FilterPostDataButton.Position = [361 470 100 23];
+            app.FilterPostDataButton.Text = 'Filter/Post Data';
+
+            % Create Lamp
+            app.Lamp = uilamp(app.RightPanel);
+            app.Lamp.Enable = 'off';
+            app.Lamp.Position = [425 1025 20 20];
+
+            % Create PerformRankButton
+            app.PerformRankButton = uibutton(app.RightPanel, 'push');
+            app.PerformRankButton.ButtonPushedFcn = createCallbackFcn(app, @PerformRankButtonPushed, true);
+            app.PerformRankButton.BackgroundColor = [1 1 1];
+            app.PerformRankButton.FontColor = [1 0 0];
+            app.PerformRankButton.Enable = 'off';
+            app.PerformRankButton.Position = [29 334 100 23];
+            app.PerformRankButton.Text = 'Perform Rank';
+
+            % Create Lamp_2
+            app.Lamp_2 = uilamp(app.RightPanel);
+            app.Lamp_2.Visible = 'off';
+            app.Lamp_2.Position = [150 335 20 20];
+
+            % Create RankExportedtoEditFieldLabel
+            app.RankExportedtoEditFieldLabel = uilabel(app.RightPanel);
+            app.RankExportedtoEditFieldLabel.BackgroundColor = [0.9412 0.9412 0.9412];
+            app.RankExportedtoEditFieldLabel.HorizontalAlignment = 'center';
+            app.RankExportedtoEditFieldLabel.WordWrap = 'on';
+            app.RankExportedtoEditFieldLabel.FontColor = [1 0 0];
+            app.RankExportedtoEditFieldLabel.Enable = 'off';
+            app.RankExportedtoEditFieldLabel.Position = [32 238 100 33];
+            app.RankExportedtoEditFieldLabel.Text = 'Rank Exported to:';
+
+            % Create RankExportedtoEditField
+            app.RankExportedtoEditField = uieditfield(app.RightPanel, 'text');
+            app.RankExportedtoEditField.FontColor = [1 0 0];
+            app.RankExportedtoEditField.BackgroundColor = [0.9412 0.9412 0.9412];
+            app.RankExportedtoEditField.Enable = 'off';
+            app.RankExportedtoEditField.Position = [139 236 314 36];
+
+            % Create OpenFileCheckBox
+            app.OpenFileCheckBox = uicheckbox(app.RightPanel);
+            app.OpenFileCheckBox.ValueChangedFcn = createCallbackFcn(app, @OpenFileCheckBoxValueChanged, true);
+            app.OpenFileCheckBox.Tooltip = {'Opens the rank file once complete'};
+            app.OpenFileCheckBox.Text = 'Open File?';
+            app.OpenFileCheckBox.FontColor = [1 1 1];
+            app.OpenFileCheckBox.Position = [204 335 81 22];
+
+            % Create Image
+            app.Image = uiimage(app.RightPanel);
+            app.Image.Position = [69 47 348 126];
+            app.Image.ImageSource = fullfile(pathToMLAPP, '2025_Spirelogo.png');
+
+            % Show the figure after all components are created
+            app.ShockDOERankUIFigure.Visible = 'on';
+        end
+    end
+
+    % App creation and deletion
+    methods (Access = public)
+
+        % Construct app
+        function app = shockDOEWriter_v3
+
+            % Create UIFigure and components
+            createComponents(app)
+
+            % Register the app with App Designer
+            registerApp(app, app.ShockDOERankUIFigure)
+
+            if nargout == 0
+                clear app
+            end
+        end
+
+        % Code that executes before app deletion
+        function delete(app)
+
+            % Delete UIFigure when app is deleted
+            delete(app.ShockDOERankUIFigure)
+        end
+    end
+end
